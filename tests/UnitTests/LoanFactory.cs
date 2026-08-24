@@ -39,4 +39,20 @@ public static class LoanFactory
             Patron = patron
         };
     }
+
+    [Fact]
+    public void CreateCurrentLoanForPatron_ShouldHaveFutureDueDate()
+    {
+        // Arrange
+        var patron = new Patron { Id = 1 };
+    
+        // Act
+        var loan = LoanFactory.CreateCurrentLoanForPatron(patron);
+    
+        // Assert
+        Assert.True(loan.DueDate > DateTime.Now);
+        Assert.Null(loan.ReturnDate);
+        Assert.Equal(patron.Id, loan.PatronId);
+        Assert.Same(patron, loan.Patron);
+    }
 }
