@@ -3,7 +3,7 @@ using Library.ApplicationCore.Entities;
 public static class PatronFactory
 {
     public static int patronId = 42;
-    
+
     public static Patron CreateCurrentPatron()
     {
         return new Patron
@@ -15,7 +15,7 @@ public static class PatronFactory
         };
     }
 
-        public static Patron CreateTooEarlyToRenewPatron()
+    public static Patron CreateTooEarlyToRenewPatron()
     {
         return new Patron
         {
@@ -25,7 +25,18 @@ public static class PatronFactory
             Loans = new List<Loan>()
         };
     }
-    
+
+    public static Patron CreateRenewablePatron()
+    {
+        return new Patron
+        {
+            Id = patronId++,
+            Name = "John Doe",
+            MembershipEnd = DateTime.Now.AddMonths(1),
+            Loans = new List<Loan>()
+        };
+    }
+
     public static Patron CreateExpiredPatron()
     {
         return new Patron

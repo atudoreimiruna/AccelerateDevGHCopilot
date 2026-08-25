@@ -9,6 +9,7 @@ public class JsonLoanRepository : ILoanRepository
 
     public JsonLoanRepository(JsonData jsonData)
     {
+        ArgumentNullException.ThrowIfNull(jsonData);
         _jsonData = jsonData;
     }
 
@@ -16,40 +17,42 @@ public class JsonLoanRepository : ILoanRepository
     {
         await _jsonData.EnsureDataLoaded();
 
-        foreach (Loan loan in _jsonData.Loans!)
-        {
-            if (loan.Id == id)
-            {
-                Loan populated = _jsonData.GetPopulatedLoan(loan);
-                return populated;
-            }
-        }
-        return null;
+        Loan? loan = _jsonData.Loans?
+            .FirstOrDefault(l => l.Id == id);
+
+        return loan == null
+            ? null
+            : _jsonData.GetPopulatedLoan(loan);
     }
 
     public async Task UpdateLoan(Loan loan)
     {
-        Loan? existingLoan = null;
-        foreach (Loan l in _jsonData.Loans!)
+        ArgumentNullException.ThrowIfNull(loan);
+
+        await _jsonData.EnsureDataLoaded();
+
+        Loan? existingLoan = _jsonData.Loans?
+            .FirstOrDefault(l => l.Id == loan.Id);
+
+        if (existingLoan == null)
         {
-            if (l.Id == loan.Id)
-            {
-                existingLoan = l;
-                break;
-            }
+            return;
         }
 
-        if (existingLoan != null)
-        {
-            existingLoan.BookItemId = loan.BookItemId;
-            existingLoan.PatronId = loan.PatronId;
-            existingLoan.LoanDate = loan.LoanDate;
-            existingLoan.DueDate = loan.DueDate;
-            existingLoan.ReturnDate = loan.ReturnDate;
+        UpdateLoanProperties(existingLoan, loan);
 
-            await _jsonData.SaveLoans(_jsonData.Loans!);
+        await _jsonData.SaveLoans(_jsonData.Loans!);
+        await _jsonData.LoadData();
+    }
 
-            await _jsonData.LoadData();
-        }
+    private static void UpdateLoanProperties(
+        Loan existingLoan,
+        Loan updatedLoan)
+    {
+        existingLoan.BookItemId = updatedLoan.BookItemId;
+        existingLoan.PatronId = updatedLoan.PatronId;
+        existingLoan.LoanDate = updatedLoan.LoanDate;
+        existingLoan.DueDate = updatedLoan.DueDate;
+        existingLoan.ReturnDate = updatedLoan.ReturnDate;
     }
 }
