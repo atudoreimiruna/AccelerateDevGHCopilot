@@ -4,7 +4,9 @@ using Library.ApplicationCore.Enums;
 
 public class LoanService : ILoanService
 {
-    private ILoanRepository _loanRepository;
+    private readonly ILoanRepository _loanRepository;
+
+    public const int ExtendByDays = 14;
 
     public LoanService(ILoanRepository loanRepository)
     {
@@ -13,58 +15,54 @@ public class LoanService : ILoanService
 
     public async Task<LoanReturnStatus> ReturnLoan(int loanId)
     {
-        Loan? loan = await _loanRepository.GetLoan(loanId);
-        if (loan == null)
-        {
-            return LoanReturnStatus.LoanNotFound;
-        }
+        var loan = await _loanRepository.GetLoan(loanId);
 
-        // check if already returned
-        if (loan.ReturnDate != null)
-        {
+        if (loan is null)
+            return LoanReturnStatus.LoanNotFound;
+
+        if (loan.ReturnDate is not null)
             return LoanReturnStatus.AlreadyReturned;
-        }
 
         loan.ReturnDate = DateTime.Now;
-        try
-        {
-            await _loanRepository.UpdateLoan(loan);
-            return LoanReturnStatus.Success;
-        }
-        catch (Exception e)
-        {
-            return LoanReturnStatus.Error;
-        }
-    }
 
-    public const int ExtendByDays = 14;
+        return await TryUpdateLoan(loan)
+            ? LoanReturnStatus.Success
+            : LoanReturnStatus.Error;
+    }
 
     public async Task<LoanExtensionStatus> ExtendLoan(int loanId)
     {
         var loan = await _loanRepository.GetLoan(loanId);
 
-        if (loan == null)
+        if (loan is null)
             return LoanExtensionStatus.LoanNotFound;
 
-        // Check if patron's membership is expired
         if (loan.Patron!.MembershipEnd < DateTime.Now)
             return LoanExtensionStatus.MembershipExpired;
 
-        if (loan.ReturnDate != null)
+        if (loan.ReturnDate is not null)
             return LoanExtensionStatus.LoanReturned;
 
         if (loan.DueDate < DateTime.Now)
             return LoanExtensionStatus.LoanExpired;
 
         loan.DueDate = loan.DueDate.AddDays(ExtendByDays);
+
+        return await TryUpdateLoan(loan)
+            ? LoanExtensionStatus.Success
+            : LoanExtensionStatus.Error;
+    }
+
+    private async Task<bool> TryUpdateLoan(Loan loan)
+    {
         try
         {
             await _loanRepository.UpdateLoan(loan);
-            return LoanExtensionStatus.Success;
+            return true;
         }
-        catch (Exception e)
+        catch (Exception)
         {
-            return LoanExtensionStatus.Error;
+            return false;
         }
     }
 }
